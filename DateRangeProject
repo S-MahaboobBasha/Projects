@@ -1,0 +1,535 @@
+########## Default Button -> OnSelect Property: 
+
+// Set default From Date
+Set(
+    varDefaultFromDate,
+    Sys_CurrentDate.SelectedDate
+);
+
+// Set default To Date
+Set(
+    varDefaultToDate,
+   With(
+    {
+        curDate: Sys_CurrentDate.SelectedDate,
+        weekDayNum: Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday), // Sunday=1 ... Saturday=7
+        targetCount: If(
+            weekDayNum <= 4, 3,    // Sun-Wed
+            If(weekDayNum = 5, 3, 4)  // Thu =3, Fri/Sat=4
+        ),
+        firstThursday: DateAdd(
+            curDate,
+            Mod(5 - Weekday(curDate, StartOfWeek.Sunday), 7) + If(weekDayNum = 5, 7, 0),
+            Days
+        )
+    },
+    DateAdd(firstThursday, (targetCount - 1) * 7, Days)
+)
+
+);
+
+// Reset Preset Dates
+Set(varPresetFromDate, Blank());
+Set(varPresetToDate, Blank());
+Set(varLoadPresetFromDate, Blank());
+Set(varLoadPresetToDate, Blank());
+Set(varBeforeAfterFromDate, Blank());
+Set(varBeforeAfterToDate, Blank());
+
+
+
+############### DropdownWeekSelector Item Property: (Dropdown)
+
+[
+    "3 Weeks before",
+    "2 Weeks before",
+    "1 Week before",
+    "3 Weeks after",
+    "2 Weeks after",
+    "1 Week after",
+    "Preset-1",
+    "Preset-2",
+    "Preset-3",
+    "Preset-4"
+]
+
+
+############### DropdownWeekSelector OnChange Property: (Dropdown)
+
+
+Switch(
+    true,
+
+    // --- CASE 1: Presets ---
+    Left(Lower(DropdownWeekSelector.Selected.Value), 6) = "preset",
+    With(
+        {
+            today_Currentdate: Sys_CurrentDate.SelectedDate,
+            sel: DropdownWeekSelector.Selected.Value,
+            isPreset: Left(Lower(DropdownWeekSelector.Selected.Value), 6) = "preset"
+        },
+        If(
+            isPreset,
+            With(
+                { p: LookUp(colPresets, PresetName = sel) },
+                Set(
+                    varPresetFromDate,
+                    If(
+                        IsBlank(p),
+                        Set(varLoadPresetFromDate, Blank()); 
+                        Blank(),
+                        p.FromDate
+                    )
+                );
+                Set(varBeforeAfterFromDate, Blank());
+                Set(varBeforeAfterToDate, Blank());
+                Set(
+                    varPresetToDate,
+                    If(
+                        IsBlank(p),
+                        Set(varLoadPresetToDate, Blank()); 
+                        Blank(),
+                        p.ToDate
+                    )
+                )
+            )
+        )
+    ),
+
+    // --- CASE 2: Weekday = Sunday..Wednesday ---
+    Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday) <= 4,
+    With(
+        {
+            CurDate: Sys_CurrentDate.SelectedDate,
+            selNum: Value(First(Split(DropdownWeekSelector.Selected.Value, " ")).Value),
+            isBefore: EndsWith(DropdownWeekSelector.Selected.Value, "before"),
+            weekDayNum: Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday)
+        },
+        With(
+            {
+                baseThursday: If(
+                    isBefore,
+                    DateAdd(Sys_CurrentDate.SelectedDate, -Mod(weekDayNum + 2, 7), TimeUnit.Days),
+                    DateAdd(CurDate, Mod(5 - weekDayNum + 7, 7), TimeUnit.Days)
+                )
+            },
+            Set(
+                varBeforeAfterFromDate,
+                If(isBefore, DateAdd(baseThursday, -selNum * 7, TimeUnit.Days), CurDate)
+            );
+            Set(varPresetFromDate, Blank());
+            Set(varPresetToDate, Blank());
+            Set(
+                varBeforeAfterToDate,
+                If(isBefore, CurDate, DateAdd(baseThursday, selNum * 7, TimeUnit.Days))
+            )
+        )
+    ),
+
+    // --- CASE 3: Weekday = Thursday ---
+    Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday) = 5,
+    With(
+        {
+            today_Currentdate: Sys_CurrentDate.SelectedDate,
+            sel: DropdownWeekSelector.Selected.Value,
+            weekdayNum: Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday),
+            isThursday: Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday) = 5,
+            isBefore: Find("before", Lower(DropdownWeekSelector.Selected.Value)) > 0,
+            isAfter: Find("after", Lower(DropdownWeekSelector.Selected.Value)) > 0,
+            weekNum: Value(First(Split(DropdownWeekSelector.Selected.Value, " ")).Value)
+        },
+        With(
+            {
+                prevThu: DateAdd(today_Currentdate, -Mod(weekdayNum - 5 + 7, 7), TimeUnit.Days),
+                nextThu: DateAdd(today_Currentdate, Mod(5 - weekdayNum + 7, 7), TimeUnit.Days),
+                adjBefore: If(
+                    isBefore,
+                    If(
+                        weekdayNum <> 5,
+                        -(weekNum + 1),
+                        If(isThursday, -weekNum, -(weekNum + 1))
+                    ),
+                    0
+                ),
+                adjAfter: If(
+                    isAfter,
+                    If(
+                        weekdayNum <> 5,
+                        weekNum + 1,
+                        If(isThursday, weekNum, weekNum + 1)
+                    ),
+                    0
+                )
+            },
+            Set(
+                varBeforeAfterFromDate,
+                If(isBefore, DateAdd(prevThu, adjBefore * 7, TimeUnit.Days), today_Currentdate)
+            );
+            Set(varPresetFromDate, Blank());
+            Set(varPresetToDate, Blank());
+            Set(
+                varBeforeAfterToDate,
+                If(isAfter, DateAdd(nextThu, adjAfter * 7, TimeUnit.Days), today_Currentdate)
+            )
+        )
+    ),
+
+    // --- CASE 4: Weekday = Friday or Saturday ---
+    Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday) >= 6,
+    With(
+        {
+            CurDate: Sys_CurrentDate.SelectedDate,
+            selNum: Value(First(Split(DropdownWeekSelector.Selected.Value, " ")).Value),
+            isBefore: EndsWith(DropdownWeekSelector.Selected.Value, "before"),
+            weekDayNum: Weekday(Sys_CurrentDate.SelectedDate, StartOfWeek.Sunday)
+        },
+        With(
+            {
+                nearestThursday: If(
+                    isBefore,
+                    DateAdd(
+                        CurDate,
+                        -Mod(Weekday(CurDate, StartOfWeek.Sunday) - 5 + 7, 7),
+                        TimeUnit.Days
+                    ),
+                    DateAdd(
+                        CurDate,
+                        Mod(5 - Weekday(CurDate, StartOfWeek.Sunday) + 7, 7),
+                        TimeUnit.Days
+                    )
+                ),
+                dropOffset: selNum + 1
+            },
+            Set(
+                varBeforeAfterFromDate,
+                If(isBefore, DateAdd(nearestThursday, -(dropOffset - 1) * 7, TimeUnit.Days), CurDate)
+            );
+            Set(varPresetFromDate, Blank());
+            Set(varPresetToDate, Blank());
+            Set(
+                varBeforeAfterToDate,
+                If(isBefore, CurDate, DateAdd(nearestThursday, (dropOffset - 1) * 7, TimeUnit.Days))
+            )
+        )
+    )
+)
+
+
+
+
+
+
+##################### DatePickerCanvas_From -> DisplayMode Property: (DatePicker_1)
+
+
+If(
+    DropdownWeekSelector.Selected.Value in [
+        "Preset-1",
+        "Preset-2",
+        "Preset-3",
+        "Preset-4"
+    ],
+    DisplayMode.Edit,
+    DisplayMode.Disabled
+)
+
+
+##################### DatePickerCanvas_From -> SelectedDate Property: (DatePicker_1)
+
+If(
+    Left(
+        Lower(DropdownWeekSelector.Selected.Value),
+        6
+    ) = "preset",
+    varPresetFromDate,
+    If(
+        DropdownWeekSelector.Selected.Value in [
+            "3 Weeks before",
+            "2 Weeks before",
+            "1 Week before",
+            "3 Weeks after",
+            "2 Weeks after",
+            "1 Week after"
+        ],
+        varBeforeAfterFromDate,
+        Blank()
+    )
+)
+
+##################### DatePickerCanvas_To -> DisplayMode Property: (DatePicker_2)
+
+
+If(
+    DropdownWeekSelector.Selected.Value in [
+        "Preset-1",
+        "Preset-2",
+        "Preset-3",
+        "Preset-4"
+    ],
+    DisplayMode.Edit,
+    DisplayMode.Disabled
+)
+
+
+###################### DatePickerCanvas_To -> SelectedDate Property: (DatePicker_2)
+
+If(
+    Left(
+        Lower(DropdownWeekSelector.Selected.Value),
+        6
+    ) = "preset",
+    varPresetToDate,
+    If(
+        DropdownWeekSelector.Selected.Value in [
+            "3 Weeks before",
+            "2 Weeks before",
+            "1 Week before",
+            "3 Weeks after",
+            "2 Weeks after",
+            "1 Week after"
+        ],
+        varBeforeAfterToDate,
+        Blank()
+    )
+)
+
+
+
+################### Save Button: DisplayMode Property
+
+
+If(
+    And(
+        Left(
+            Lower(DropdownWeekSelector.Selected.Value),
+            6
+        ) = "preset",
+        !IsBlank(DatePickerCanvas_From.SelectedDate),
+        !IsBlank(DatePickerCanvas_To.SelectedDate)
+    ),
+    DisplayMode.Edit,
+    DisplayMode.Disabled
+)
+
+
+##################### Save Button: OnSelect Property
+
+If(
+    // --- CASE 1: Missing dates ---
+    IsBlank(DatePickerCanvas_From.SelectedDate) 
+        || IsBlank(DatePickerCanvas_To.SelectedDate),
+    Notify(
+        "Please Enter FROM DATE and TO DATE, and ensure FROM DATE < TO DATE", 
+        NotificationType.Error
+    ),
+
+    // --- CASE 2: Invalid date range ---
+    If(
+        !IsBlank(DatePickerCanvas_From.SelectedDate) 
+            && !IsBlank(DatePickerCanvas_To.SelectedDate) 
+            && (DatePickerCanvas_From.SelectedDate >= DatePickerCanvas_To.SelectedDate),
+        Notify(
+            "Please Enter the valid date i.e., FROM Date < TO Date", 
+            NotificationType.Error
+        ),
+
+        // --- CASE 3: Patch or Create Preset ---
+        If(
+            DropdownWeekSelector.Selected.Value in [
+                "Preset-1", 
+                "Preset-2", 
+                "Preset-3", 
+                "Preset-4"
+            ],
+            If(
+                CountRows(
+                    Filter(
+                        colPresets, 
+                        PresetName = DropdownWeekSelector.Selected.Value
+                    )
+                ) > 0,
+                // Update existing Preset
+                Patch(
+                    colPresets,
+                    LookUp(
+                        colPresets, 
+                        PresetName = DropdownWeekSelector.Selected.Value
+                    ),
+                    {
+                        FromDate: DatePickerCanvas_From.SelectedDate,
+                        ToDate: DatePickerCanvas_To.SelectedDate,
+                        PresetName: DropdownWeekSelector.Selected.Value
+                    }
+                );
+                Notify(
+                    $"{DropdownWeekSelector.Selected.Value} updated successfully!",
+                    NotificationType.Information
+                ),
+                // Create new Preset
+                Collect(
+                    colPresets,
+                    {
+                        FromDate: DatePickerCanvas_From.SelectedDate,
+                        ToDate: DatePickerCanvas_To.SelectedDate,
+                        PresetName: DropdownWeekSelector.Selected.Value
+                    }
+                );
+                Notify(
+                    $"{DropdownWeekSelector.Selected.Value} created successfully!",
+                    NotificationType.Success
+                )
+            );
+
+            /* --- Safe Side Reset --- */
+            Reset(DatePickerCanvas_From);
+            Reset(DatePickerCanvas_To);
+            Reset(DropdownWeekSelector);
+
+            Set(varBeforeAfterFromDate, Blank());
+            Set(varBeforeAfterToDate, Blank());
+            Set(varPresetFromDate, Blank());
+            Set(varPresetToDate, Blank());
+            Set(varLoadPresetFromDate, Blank());
+            Set(varLoadPresetToDate, Blank())
+        )
+    )
+)
+
+
+
+################################# Load Button: OnSelect Property
+
+If(
+    !IsBlank(DropdownWeekSelector.Selected.Value) 
+        && !IsBlank(DatePickerCanvas_From.SelectedDate) 
+        && !IsBlank(DatePickerCanvas_To.SelectedDate),
+
+    // --- Check if selected value is a Preset ---
+    If(
+        DropdownWeekSelector.Selected.Value in [
+            "Preset-1",
+            "Preset-2",
+            "Preset-3",
+            "Preset-4"
+        ],
+        Set(
+            varPresetRecord,
+            LookUp(
+                colPresets,
+                PresetName = DropdownWeekSelector.Selected.Value
+            )
+        );
+        
+        If(
+            !IsBlank(varPresetRecord),
+            Set(varLoadPresetFromDate, varPresetRecord.FromDate);
+            Set(varLoadPresetToDate, varPresetRecord.ToDate);
+            Set(varBeforeAfterFromDate, Blank());
+            Set(varBeforeAfterToDate, Blank());
+            Set(varPresetFromDate, varLoadPresetFromDate);
+            Set(varPresetToDate, varLoadPresetToDate)
+        )
+    ),
+
+    // --- Else: notify user ---
+    Notify(
+        "Please save the record, and ensure that FROM DATE < TO DATE",
+        NotificationType.Error
+    )
+)
+
+########################### Load Button: DisplayMode Property
+
+If(
+    DropdownWeekSelector.Selected.Value in [
+        "Preset-1",
+        "Preset-2",
+        "Preset-3",
+        "Preset-4"
+    ] 
+    && !IsEmpty(
+        Filter(
+            colPresets,
+            PresetName = DropdownWeekSelector.Selected.Value
+        )
+    ),
+    DisplayMode.Edit,
+    DisplayMode.Disabled
+)
+
+
+
+############################ Gallery: Item Property:
+
+Filter(
+    colAllDates,
+    DateValue(ThisRecord.Date) >= Coalesce(
+        varBeforeAfterFromDate,
+        varLoadPresetFromDate,
+        varDefaultFromDate
+    ) &&
+    DateValue(ThisRecord.Date) <= Coalesce(
+        varBeforeAfterToDate,
+        varLoadPresetToDate,
+        varDefaultToDate
+    )
+)
+
+
+#################### Gallery: Template Fill Property
+
+If(
+    !IsBlank(varBeforeAfterFromDate) || !IsBlank(varBeforeAfterToDate),
+    Color.LightGoldenrodYellow,
+    If(
+        !IsBlank(varLoadPresetFromDate) || !IsBlank(varLoadPresetToDate),
+        Color.LightGreen,
+        Color.LightSalmon
+    )
+)
+
+
+######################### Reset Icon: OnSelect Property
+
+// Clear variables
+Set(varBeforeAfterFromDate, Blank());
+Set(varBeforeAfterToDate, Blank());
+Set(varLoadPresetFromDate, Blank());
+Set(varLoadPresetToDate, Blank());
+Set(varPresetFromDate, Blank());
+Set(varPresetToDate, Blank());
+
+// Reset controls
+Reset(DatePickerCanvas_From);
+Reset(DatePickerCanvas_To);
+Reset(DropdownWeekSelector);
+Reset(Sys_CurrentDate);
+
+// Clear collections
+Clear(colPresets);
+
+############################ Home Icon: OnSelect Property:
+
+// Navigate back to start screen
+Navigate(scr_Start);
+
+########################### App.OnStart Property:
+
+// Clear existing collection
+Clear(colPresets);
+
+// Define date range
+Set(RangeStart, DateAdd(Today(), -12, TimeUnit.Months));
+Set(RangeEnd, DateAdd(Today(), 12, TimeUnit.Months));
+
+// Populate colAllDates with all dates in the range
+ClearCollect(
+    colAllDates,
+    ForAll(
+        Sequence(DateDiff(RangeStart, RangeEnd, TimeUnit.Days) + 1),
+        {
+            Date: Text(DateAdd(RangeStart, Value, TimeUnit.Days), "dd-mmm-yyyy"),
+            Month: Text(DateAdd(RangeStart, Value, TimeUnit.Days), "mmmm")
+        }
+    )
+)
