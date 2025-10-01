@@ -76,7 +76,7 @@ Under each Branches for Excluding Preset and Default
 
 Table Name : <Datasource>
 Select columns :
-Filter rows : 
+Filter rows : StartDate ge formatDateTime(body('Parse_JSON')?['FromDate'],'MM/dd/yyyy') and EndDate ge formatDateTime(body('Parse_JSON')?['ToDate'],'MM/dd/yyyy')
 Sort By :
 Fetch Xml Query :
 Row Count : 
