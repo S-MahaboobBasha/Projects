@@ -70,6 +70,33 @@ ________________________________________________________________________________
 OneWeeks     TwoWeeks	     ThreeWeeks     PresetOne	     PresetTwo	    PresetThree	     PresetFour	     PresetFive	    PresetSix	     Default
 
 
+Imporant :
+
+Including all Preset 
+Take Condition Action
+
+Condition:  not(empty(parameters('Param1'))) is equal to  true 
+
+Yes Branch
+
+Take List rows Action
+
+Table Name : <Datasource>
+Select columns :
+Filter rows : StartDate ge formatDateTime(body('Parse_JSON')?['FromDate'],'MM/dd/yyyy') and EndDate ge formatDateTime(body('Parse_JSON')?['ToDate'],'MM/dd/yyyy')
+Sort By :
+Fetch Xml Query :
+Row Count : 
+
+Take Create CSV Table Action
+
+From : outputs(List rows)
+Select Custom from dropdown
+Header (Column Name)    |   Value (item()?['Name']) -mapping column value
+
+No Branch - Leave empty
+
+
 Under each Branches for Excluding Preset and Default
 
 4. Take List rows Action
