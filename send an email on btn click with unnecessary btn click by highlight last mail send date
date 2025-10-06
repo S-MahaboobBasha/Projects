@@ -1,0 +1,183 @@
+SENDMAILONBTNCLICK
+
+POWERAPPS FORMULA:
+
+TEXT VISIBLE LAST SEND MAIL DATE TO THE USER:  (SINGLE TEXT COLUMN TO STORE DATE)
+
+
+With(
+    {
+        record: LookUp(
+            'YourDataSourceName',
+            ID = DataCardValueID.Text
+        )
+    },
+    If(
+        !IsBlank(record.LastEmailSent),
+        "Last Email sent on: " & 
+        Text(
+            DateTimeValue(record.LastEmailSent),
+            "[$-en-US]dd-mmm-yyyy hh:mm AM/PM"
+        ),
+        ""
+    )
+)
+
+SEND EMAIL BUTTON :
+
+TEXT PROPERTY:
+
+IF(SENDING, "SENDING.........","SEND EMAIL")
+
+2. ICON PROPERTY:
+
+IF(SENDING, "ARROWSYNC", "SEND")
+
+3. ICON ROTATION PROPERTY:
+
+IF(SENDING, ROTATIONANGLE,0)
+
+4. ONSELECT PROPERTY:
+
+// Start sending
+UpdateContext({ Sending: true });
+
+If(
+    // Validation check for empty or "--None--" fields
+    IsBlank(Dropdown1.SelectedText.Value) || Dropdown1.SelectedText.Value = "--None--" ||
+    IsBlank(Dropdown2.SelectedText.Value) || Dropdown2.SelectedText.Value = "--None--" ||
+    IsBlank(Dropdown3.SelectedText.Value) || Dropdown3.SelectedText.Value = "--None--" ||
+    IsBlank(TextInput1.Text) || TextInput1.Text = "--None--" ||
+    IsBlank(TextInput2.Text) ||
+    IsBlank(TextInput3.Text) ||
+    IsBlank(TextInput4.Text) ||
+    IsBlank(DatePicker1.SelectedDate),
+
+    // If validation fails → Show alert popup
+    UpdateContext({ PopupAlertMsg: true }),
+
+    // Else → Call flow
+    Set(
+        flowResultValue,
+        DummyFlow.Run(
+            TextInput1.Text,
+            TextInput2.Text,
+            TextInput3.Text,
+            Dropdown1.SelectedText.Value,
+            Dropdown2.SelectedText.Value,
+            Dropdown3.SelectedText.Value,
+            TextInput4.Text,
+            DatePicker1.SelectedDate
+        )
+    )
+);
+
+// If popup is NOT shown (means validation passed)
+If(
+    !PopupAlertMsg,
+    If(
+        flowResultValue.message = "true",
+        // Success notification
+        Notify(
+            "Email sent successfully.",
+            NotificationType.Success
+        );
+
+        // Update record in data source
+        Patch(
+            'YourDataSourceName',
+            LookUp(
+                'YourDataSourceName',
+                RecordID = varFormData.RecordID
+            ),
+            { LastEmailSent: Now() }
+        ),
+        // Error notification if flow failed
+        Notify(
+            "Failed to send email.",
+            NotificationType.Error
+        )
+    )
+);
+
+// Clear variables after process
+Set(flowResultValue, Blank());
+UpdateContext({ Sending: false });
+
+
+
+
+OPTIMIZE WAY FORMULA:
+
+// Start sending process
+UpdateContext({ Sending: true, PopupAlertMsg: false });
+
+// Define validation logic
+Set(
+    isInvalid,
+    IsBlank(Dropdown1.SelectedText.Value) || Dropdown1.SelectedText.Value = "--None--" ||
+    IsBlank(Dropdown2.SelectedText.Value) || Dropdown2.SelectedText.Value = "--None--" ||
+    IsBlank(Dropdown3.SelectedText.Value) || Dropdown3.SelectedText.Value = "--None--" ||
+    IsBlank(TextInput1.Text) || TextInput1.Text = "--None--" ||
+    IsBlank(TextInput2.Text) ||
+    IsBlank(TextInput3.Text) ||
+    IsBlank(TextInput4.Text) ||
+    IsBlank(DatePicker1.SelectedDate)
+);
+
+// If validation fails → show popup & stop process
+If(
+    isInvalid,
+    UpdateContext({ PopupAlertMsg: true }),
+    
+    // Otherwise → call flow
+    Set(
+        flowResultValue,
+        DummyFlow.Run(
+            TextInput1.Text,
+            TextInput2.Text,
+            TextInput3.Text,
+            Dropdown1.SelectedText.Value,
+            Dropdown2.SelectedText.Value,
+            Dropdown3.SelectedText.Value,
+            TextInput4.Text,
+            DatePicker1.SelectedDate
+        )
+    );
+
+    // Handle flow response
+    If(
+        flowResultValue.message = "true",
+        // ✅ Success branch
+        Notify("Email sent successfully.", NotificationType.Success);
+
+        Patch(
+            'YourDataSourceName',
+            LookUp(
+                'YourDataSourceName',
+                RecordID = varFormData.RecordID
+            ),
+            { LastEmailSent: Now() }
+        ),
+        // ❌ Failure branch
+        Notify("Failed to send email.", NotificationType.Error)
+    )
+);
+
+// Reset context & cleanup
+Set(flowResultValue, Blank());
+UpdateContext({ Sending: false });
+
+
+
+TIMER CONTROL:
+
+Duration Property: 1
+
+OnTimerEnd Property: UpdateContext((RotationAngle: Mod (RotationAngle + 15, 360)))
+
+Repeat Property: true
+
+Start Property: Sending
+
+Visible Property: false
