@@ -1,3 +1,20 @@
+ClearCollect(
+    nfGoLiveForum,
+    AddColumns(
+        ShowColumns(
+            'YourSharePointList',
+            "Title",
+            "ECNTYPE",
+            "ActionType",    // choice column
+            "TaskECN"
+        ),
+        "ActionTypeValue", ActionType.Value
+    )
+)
+
+
+
+
 Got it! You want your **Gallery** to **default show MOR Number in descending order** (highest first), while still supporting sorting on all other columns. Here's the complete setup for **SharePoint**.
 
 ---
