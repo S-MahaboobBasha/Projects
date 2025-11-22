@@ -1,0 +1,91 @@
+Got it! You want your **Gallery** to **default show MOR Number in descending order** (highest first), while still supporting sorting on all other columns. Here's the complete setup for **SharePoint**.
+
+---
+
+## **1️⃣ App.OnStart**
+
+```powerfx
+// Default sort column = MOR Number
+Set(Gl_varSortColumn, "cr4e0_mor_number");
+
+// Default sort order = Descending
+Set(varSortOrder, SortOrder.Descending);
+```
+
+This ensures the gallery **initially loads with descending MOR Number**.
+
+---
+
+## **2️⃣ Gallery Items Formula**
+
+```powerfx
+SortByColumns(
+    Search(
+        Filter(
+            nfGoLiveForum,
+            (engagement_type = gl_dllEngagementType_1.Selected.Value 
+                || IsBlank(gl_dllEngagementType_1.Selected.Value))
+            && DateValue(target_implementation_date) > GL_Fromdate_1.SelectedDate
+            && DateValue(target_implementation_date) <= GL_Todate_1.SelectedDate
+        ),
+        Gl_txtSearch_1.Text,  // Search box text
+        "mor_number",
+        "project_name",
+        "go_live_change_request_1",
+        "sponsoring_accountable_cio_name",
+        "analyst_name",
+        "column6_dummy",
+        "column7_dummy",
+        "column8_dummy",
+        "column9_dummy",
+        "column10_dummy"
+    ),
+
+    // Sort column based on selected header
+    Switch(
+        Gl_varSortColumn,
+        "cr4e0_mor_number",                "mor_number",
+        "cr4e1_project_name",              "project_name",
+        "cr4e2_go_live_change_request_1",  "go_live_change_request_1",
+        "cr4e3_sponsoring_accountable_cio_name", "sponsoring_accountable_cio_name",
+        "cr4e4_analyst_name",              "analyst_name",
+        "cr4e5_column6_dummy",             "column6_dummy",
+        "cr4e6_column7_dummy",             "column7_dummy",
+        "cr4e7_column8_dummy",             "column8_dummy",
+        "cr4e8_column9_dummy",             "column9_dummy",
+        "cr4e9_column10_dummy",            "column10_dummy",
+        "mor_number" // default sort
+    ),
+
+    // Sort order variable
+    varSortOrder
+)
+```
+
+✅ **Explanation**:
+
+* If search box is blank → shows **all records**
+* Gallery initially sorted **MOR Number DESC**
+* Clicking any column icon → toggles ASC/DESC
+
+---
+
+## **3️⃣ Sort Icon OnSelect Example**
+
+For **MOR Number column**:
+
+```powerfx
+Set(Gl_varSortColumn, "cr4e0_mor_number");
+Set(
+    varSortOrder,
+    If(varSortOrder = SortOrder.Descending, SortOrder.Ascending, SortOrder.Descending)
+);
+```
+
+For other columns, just change `"cr4e0_mor_number"` to the column key, e.g., `"cr4e1_project_name"`.
+
+---
+
+If you want, I can **generate all 10 column sort icons with toggle logic** for you in one go, ready to paste.
+
+Do you want me to do that?
