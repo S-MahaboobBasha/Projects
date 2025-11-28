@@ -138,6 +138,134 @@ SortByColumns(
 ✔ Clean & optimized logic (no App.OnStart needed)
 
 
+Extra Logic ⬇️ and ⬆️
+
+
+Perfect — here is the **cleanest and exact logic** so the sort icon:
+
+### ✅ **1. Shows only for the 4 sortable columns**
+
+### ✅ **Shows ↑ or ↓ only when that column is the active sort column**
+
+### ❌ **Does NOT show anything for the 8 non-sortable columns**
+
+This is the correct, optimized setup.
+
+---
+
+# ⭐ 1. Header Gallery Structure
+
+(You already have this — repeating only relevant part)
+
+```powerfx
+[
+    {Title:"DensoPartNumber", SortKey:"Denso", CanSort:true},
+    {Title:"CustomPartNumber", SortKey:"Custom", CanSort:true},
+    {Title:"SupplierPartNumber", SortKey:"SupplierPart", CanSort:true},
+    {Title:"Supplier", SortKey:"SupplierName", CanSort:true},
+
+    // 8 columns without sort:
+    {Title:"TYPE", SortKey:"", CanSort:false},
+    {Title:"Model", SortKey:"", CanSort:false},
+    ...
+]
+```
+
+---
+
+# ⭐ 2. Sort Icon (Image or Label) → **Visible property**
+
+Only visible for columns having sort logic:
+
+```powerfx
+ThisItem.CanSort && varSortColumn = ThisItem.SortKey
+```
+
+✔ Shows only for the 4 sortable columns
+✔ Shows only when that column is currently sorted
+✔ Completely hidden for the 8 non-sortable columns
+
+---
+
+# ⭐ 3. Sort Icon → **Text property (if using Label)**
+
+```powerfx
+If(
+    varSortOrder = SortOrder.Ascending,
+    "↑",
+    "↓"
+)
+```
+
+OR for image control, choose icon name:
+
+**Image property:**
+
+```powerfx
+If(
+    varSortOrder = SortOrder.Ascending,
+    Icon.ChevronUp,
+    Icon.ChevronDown
+)
+```
+
+---
+
+# ⭐ 4. Full Logic for BOTH Visible + Text (Copy-Paste Ready)
+
+### **Visible**
+
+```powerfx
+ThisItem.CanSort && varSortColumn = ThisItem.SortKey
+```
+
+### **Text**
+
+```powerfx
+If(
+    varSortOrder = SortOrder.Ascending,
+    "↑",
+    "↓"
+)
+```
+
+---
+
+# ⭐ 5. Optional: Header Label → Text with Inline Arrow
+
+If you want arrow next to header text in single control:
+
+```powerfx
+ThisItem.Title &
+If(
+    ThisItem.CanSort && varSortColumn = ThisItem.SortKey,
+    If(
+        varSortOrder = SortOrder.Ascending,
+        " ↑",
+        " ↓"
+    ),
+    ""
+)
+```
+
+✔ Arrow shows ONLY for sortable columns
+✔ Arrow switches up/down
+✔ No arrow for non-sortable columns
+
+---
+
+# 🎉 Final Result
+
+* 8 non-sortable headers → **NO icon, no arrow, no error**
+* 4 sortable headers → **icon appears only when active**
+* Arrow ↑ / ↓ properly toggles
+* No duplication
+* Cleanest Power Apps pattern
+
+---
+
+
+
 
 
 
