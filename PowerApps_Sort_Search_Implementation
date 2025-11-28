@@ -1,0 +1,144 @@
+Corrected and Clarified Requirements
+
+You are using a SharePoint list as a data source. Your list has four Single Line of Text columns:
+
+· DensoPartNumber
+· CustomPartNumber
+· SupplierPartNumber
+· Supplier
+
+In your Power Apps screen, you have:
+
+1. A Header Gallery: To display the column names.
+2. A Data Gallery: To display the records from the SharePoint list.
+3. A Search Text Input Box: To allow users to search across any of the four columns.
+
+Your functional requirements are:
+
+· When the screen loads, the data in the Data Gallery should be sorted by DensoPartNumber in descending order.
+· When a user clicks a column name in the Header Gallery, the Data Gallery should sort by that column. Clicking the same header again should toggle the sort order between ascending and descending.
+· The search functionality should filter the records based on the user's input, matching against any of the four columns.
+· All logic must avoid delegation warnings.
+
+
+
+Below is the **clean, optimized, non-delegated + sortable + searchable** solution for your requirement.
+
+---
+
+# ✅ **Your Requirement**
+
+* SharePoint list with **4 Single Line of Text** columns
+  `DensoPartNumber`, `CustomPartNumber`, `SupplierPartNumber`, `Supplier`
+* **GalleryHeader** → to show column headers (click → toggle Asc/Desc)
+* **GalleryData** → to show list records
+* **Search TextInput** → SearchBox
+* **Need:**
+
+  * Default sort → DensoPartNumber **descending**
+  * Click header → toggle sort order
+  * Search must work across all 4 columns
+  * **NO delegation issues** (use `ClearCollect` locally)
+
+---
+
+# ✅ **1. OnVisible of Screen**
+
+Load entire list locally → delegation removed.
+
+```powerfx
+ClearCollect(
+    colData,
+    AddColumns(
+        YourSharePointList,
+        "Denso", DensoPartNumber,
+        "Custom", CustomPartNumber,
+        "SupplierPart", SupplierPartNumber,
+        "SupplierName", Supplier
+    )
+);
+
+// Default Sort Column & Order
+Set(varSortColumn, "Denso");
+Set(varSortOrder, SortOrder.Descending);
+```
+
+---
+
+# ✅ **2. Header Gallery – Items**
+
+Hardcode header names.
+
+```powerfx
+[
+    {Title:"DensoPartNumber", SortKey:"Denso"},
+    {Title:"CustomPartNumber", SortKey:"Custom"},
+    {Title:"SupplierPartNumber", SortKey:"SupplierPart"},
+    {Title:"Supplier", SortKey:"SupplierName"}
+]
+```
+
+---
+
+# ✅ **3. OnSelect of Header Label**
+
+Toggle sort column + order.
+
+```powerfx
+Set(
+    varSortColumn,
+    ThisItem.SortKey
+);
+
+Set(
+    varSortOrder,
+    If(
+        varSortOrder = SortOrder.Ascending,
+        SortOrder.Descending,
+        SortOrder.Ascending
+    )
+);
+```
+
+---
+
+# ✅ **4. Search Logic (works for all 4 columns)**
+
+SearchBox → **TextInputSearch.Text**
+
+Use **Filter + SortByColumns** on local collection (non-delegated):
+
+---
+
+# ✅ **5. GalleryData → Items**
+
+```powerfx
+SortByColumns(
+    Filter(
+        colData,
+        IsBlank(TextInputSearch.Text) ||
+        StartsWith(Denso, TextInputSearch.Text) ||
+        StartsWith(Custom, TextInputSearch.Text) ||
+        StartsWith(SupplierPart, TextInputSearch.Text) ||
+        StartsWith(SupplierName, TextInputSearch.Text)
+    ),
+    varSortColumn,
+    varSortOrder
+)
+```
+
+---
+
+# 🎉 **Now your app supports:**
+
+✔ Non-delegated data (safe & fast)
+✔ Search on all 4 columns
+✔ Sort Asc/Desc toggle on header click
+✔ Default sort = DensoPartNumber in **descending**
+✔ Clean & optimized logic (no App.OnStart needed)
+
+
+
+
+
+
